@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Electricity Cost Predictor</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap');
+
+        :root {
+            --bg-0: #0b1020;
+            --bg-1: #13213b;
+            --bg-2: #1c3455;
+            --card-top: rgba(11, 27, 44, 0.88);
+            --card-bottom: rgba(8, 21, 36, 0.9);
+            --text: #eaf4ff;
+            --text-soft: #a7c2d8;
+            --line: rgba(255, 255, 255, 0.14);
+            --line-soft: rgba(255, 255, 255, 0.08);
+            --accent: #36d4d9;
+            --ok: #34d399;
+            --warn: #fb923c;
+            --danger: #fb7185;
+            --shadow-xl: 0 36px 80px rgba(0, 0, 0, 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            font-family: 'Outfit', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(1100px 620px at 0% -20%, rgba(99, 102, 241, 0.24), transparent 55%),
+                radial-gradient(900px 600px at 100% 0%, rgba(59, 130, 246, 0.18), transparent 60%),
+                linear-gradient(150deg, var(--bg-0), var(--bg-1), var(--bg-2));
+            padding: 26px 14px;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -3;
+            background: url("{{ url_for('static', filename='img/electricity.jpg') }}") center / cover no-repeat;
+            opacity: 0.1;
+            transform: scale(1.02);
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -2;
+            background:
+                linear-gradient(145deg, rgba(11, 16, 32, 0.86), rgba(19, 33, 59, 0.7)),
+                url("{{ url_for('static', filename='img/noise.svg') }}");
+            background-size: auto, 220px 220px;
+            opacity: 1;
+            pointer-events: none;
+        }
+
+        .page {
+            max-width: 980px;
+            margin: 0 auto;
+        }
+
+        .card {
+            position: relative;
+            overflow: hidden;
+            border-radius: 20px;
+            border: 1px solid var(--line);
+            background: linear-gradient(162deg, var(--card-top), var(--card-bottom));
+            box-shadow: var(--shadow-xl);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 34px;
+            isolation: isolate;
+        }
+
+        .card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background:
+                radial-gradient(circle at 90% 16%, rgba(54, 212, 217, 0.25), transparent 42%),
+                radial-gradient(circle at 8% 100%, rgba(248, 187, 82, 0.18), transparent 48%);
+            z-index: -1;
+        }
+
+        .card::after {
+            content: "";
+            position: absolute;
+            right: -44px;
+            bottom: -56px;
+            width: min(44vw, 390px);
+            height: min(44vw, 390px);
+            background: url("{{ url_for('static', filename='img/tower.svg') }}") center / contain no-repeat;
+            opacity: 0.14;
+            filter: saturate(0.4) brightness(1.35) contrast(1.05);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .header {
+            margin-bottom: 24px;
+        }
+
+        .eyebrow {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-soft);
+            font-size: 0.73rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .title {
+            font-family: 'Fraunces', Georgia, serif;
+            font-size: clamp(1.75rem, 3vw, 2.55rem);
+            line-height: 1.1;
+            letter-spacing: 0.01em;
+        }
+
+        .title span {
+            background: linear-gradient(90deg, #8efbff, #ffd487);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .field {
+            padding: 12px;
+            border-radius: 14px;
+            border: 1px solid var(--line-soft);
+            background: linear-gradient(165deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, background 0.2s ease;
+        }
+
+        .field:hover {
+            border-color: rgba(54, 212, 217, 0.48);
+            transform: translateY(-1px);
+        }
+
+        .field:focus-within {
+            border-color: rgba(54, 212, 217, 0.72);
+            background: linear-gradient(165deg, rgba(54, 212, 217, 0.12), rgba(255, 255, 255, 0.03));
+            box-shadow: 0 14px 30px rgba(54, 212, 217, 0.16);
+            transform: translateY(-2px);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.83rem;
+            font-weight: 700;
+            color: #d7eaf8;
+            letter-spacing: 0.02em;
+        }
+
+        input,
+        select {
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 11px;
+            background: rgba(1, 8, 16, 0.62);
+            color: var(--text);
+            font: inherit;
+            font-size: 0.97rem;
+            padding: 11px 12px;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        input::placeholder {
+            color: rgba(177, 204, 224, 0.62);
+        }
+
+        input:hover,
+        select:hover {
+            border-color: rgba(142, 251, 255, 0.65);
+        }
+
+        input:focus-visible,
+        select:focus-visible {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(54, 212, 217, 0.25);
+            background: rgba(4, 14, 24, 0.93);
+        }
+
+        input:focus:in-range {
+            border-color: var(--ok);
+            box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.2);
+        }
+
+        input:out-of-range {
+            border-color: var(--warn);
+            box-shadow: 0 0 0 2px rgba(251, 146, 60, 0.2);
+        }
+
+        input:focus:invalid,
+        select:focus:invalid {
+            border-color: var(--danger);
+            box-shadow: 0 0 0 3px rgba(251, 113, 133, 0.2);
+        }
+
+        select:required:invalid {
+            color: #a6c4d8;
+        }
+
+        .cta-wrap {
+            margin-top: 18px;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px 16px;
+            border: none;
+            border-radius: 14px;
+            color: #06282f;
+            font: inherit;
+            font-weight: 800;
+            font-size: 1.02rem;
+            letter-spacing: 0.02em;
+            cursor: pointer;
+            background: linear-gradient(110deg, #39e2e7 0%, #66dec0 36%, #f8be59 100%);
+            box-shadow: 0 16px 34px rgba(54, 212, 217, 0.32);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 40px rgba(54, 212, 217, 0.38);
+            filter: brightness(1.03);
+        }
+
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 10px 24px rgba(54, 212, 217, 0.29);
+        }
+
+        .result {
+            margin-top: 18px;
+            padding: 15px;
+            border-radius: 14px;
+            border: 1px solid rgba(142, 251, 255, 0.46);
+            background: linear-gradient(135deg, rgba(54, 212, 217, 0.2), rgba(248, 187, 82, 0.14));
+            font-size: 1.12rem;
+            font-weight: 700;
+            color: #ecfcff;
+            text-align: center;
+        }
+
+        @media (max-width: 760px) {
+            .card {
+                padding: 22px;
+                border-radius: 18px;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .card::after {
+                width: 290px;
+                height: 290px;
+                right: -55px;
+                bottom: -58px;
+                opacity: 0.11;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                transition: none !important;
+            }
+          
+          body {
+            font-family: Arial, sans-serif;
+        }
+
+
+          @media print {
+            .footer {
+                position: fixed;
+                bottom: 0;
+            }
+        }
+          
+          .footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 12px;
+            border-top: 1px solid #000;
+            padding: 5px;
+        }
+
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <section class="card">
+            <header class="header">
+                <div class="eyebrow">Energy Estimator</div>
+                <h1 class="title">Electricity <span>Cost Predictor</span></h1>
+            </header>
+
+            <form action="/predict" method="post">
+                <div class="grid">
+                    <div class="field">
+                        <label for="site_area">Site Area (sq ft)</label>
+                        <input type="number" id="site_area" name="site_area" step="0.01" min="501" max="5000" value="2757.78" required>
+                    </div>
+
+                    <div class="field">
+                        <label for="structure_type">Structure Type</label>
+                        <select id="structure_type" name="structure_type" required>
+                            <option value="" selected disabled>Select Type</option>
+                            <option value="Residential">Residential</option>
+                            <option value="Industrial">Industrial</option>
+                            <option value="Mixed-use">Mixed-use</option>
+                        </select>
+                    </div>
+
+                    <div class="field">
+                        <label for="water_consumption">Water Consumption (liters/day)</label>
+                        <input type="number" id="water_consumption" name="water_consumption" step="0.01" min="1000" max="10894" value="3494.06" required>
+                    </div>
+
+                    <div class="field">
+                        <label for="recycling_rate">Recycling Rate (%)</label>
+                        <input type="number" id="recycling_rate" name="recycling_rate" step="0.01" min="10" max="90" value="49.60" required>
+                    </div>
+
+                    <div class="field">
+                        <label for="utilisation_rate">Utilisation Rate (%)</label>
+                        <input type="number" id="utilisation_rate" name="utilisation_rate" step="0.01" min="30" max="100" value="64.84" required>
+                    </div>
+
+                    <div class="field">
+                        <label for="aqi">Air Quality Index (AQI)</label>
+                        <input type="number" id="aqi" name="aqi" step="0.01" min="0" max="200" value="99.47" required>
+                    </div>
+
+                    <div class="field">
+                        <label for="issue_time">Issue Resolution Time (hours)</label>
+                        <input type="number" id="issue_time" name="issue_time" step="0.01" min="1" max="72" value="36.40" required>
+                    </div>
+
+                    <div class="field">
+                        <label for="resident_count">Resident Count</label>
+                        <input type="number" id="resident_count" name="resident_count" step="0.01" min="0" max="489" value="85.57" required>
+                    </div>
+                </div>
+
+                <div class="cta-wrap">
+                    <button type="submit">Predict Electricity Cost</button>
+                </div>
+            </form>
+
+            {% if prediction_text %}
+            <div class="result">
+                {{ prediction_text }}
+            </div>
+            {% endif %}
+        </section>
+      <div class="footer">
+        © 2026 All Rights Reserved | Created by Het , Dev & Ashish Team (ML Project 2026)
+    </div>
+
+    </main>
+</body>
+</html>
